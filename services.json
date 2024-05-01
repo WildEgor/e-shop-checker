@@ -1,0 +1,10 @@
+{
+    "timeout": 5,
+    "urls": [
+        {
+            "id": "Google OK",
+            "url": "https://google.com",
+            "enabled": true
+        }
+    ]
+}

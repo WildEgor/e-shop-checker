@@ -7,11 +7,13 @@
 package pkg
 
 import (
+	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/adapters"
 	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/configs"
 	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/handlers/errors"
 	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/handlers/health_check"
 	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/handlers/ready_check"
 	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/router"
+	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/services"
 	"github.com/google/wire"
 )
 
@@ -26,7 +28,14 @@ func NewServer() (*Server, error) {
 	readyCheckHandler := ready_check_handler.NewReadyCheckHandler()
 	publicRouter := router.NewPublicRouter(healthCheckHandler, readyCheckHandler)
 	swaggerRouter := router.NewSwaggerRouter()
-	server := NewApp(appConfig, errorsHandler, privateRouter, publicRouter, swaggerRouter)
+	notificatorAdapter := adapters.NewNotificatorAdapter()
+	healthCheckAdapter, err := adapters.NewHealthCheckAdapter()
+	if err != nil {
+		return nil, err
+	}
+	servicesConfig := configs.NewServicesConfig()
+	checkerService := services.NewCheckerService(notificatorAdapter, healthCheckAdapter, servicesConfig)
+	server := NewApp(appConfig, errorsHandler, privateRouter, publicRouter, swaggerRouter, checkerService)
 	return server, nil
 }
 

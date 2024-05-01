@@ -3,23 +3,27 @@ package pkg
 import (
 	"context"
 	"fmt"
+	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/adapters"
 	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/configs"
 	eh "github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/handlers/errors"
 	nfm "github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/middlewares/not_found"
 	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/router"
+	"github.com/WildEgor/e-shop-fiber-microservice-boilerplate/internal/services"
+	slogger "github.com/WildEgor/e-shop-gopack/pkg/libs/logger/handlers"
 	"github.com/gofiber/fiber/v3"
 	"github.com/gofiber/fiber/v3/middleware/cors"
 	"github.com/gofiber/fiber/v3/middleware/recover"
 	"github.com/gofiber/template/html/v2"
 	"github.com/google/wire"
 	"log/slog"
-	"os"
 )
 
 var AppSet = wire.NewSet(
 	NewApp,
+	adapters.AdaptersSet,
 	configs.ConfigsSet,
 	router.RouterSet,
+	services.ServicesSet,
 )
 
 // Server represents the main server configuration.
@@ -49,14 +53,18 @@ func NewApp(
 	prr *router.PrivateRouter,
 	pbr *router.PublicRouter,
 	sr *router.SwaggerRouter,
+	services *services.CheckerService,
 ) *Server {
-	logger := slog.New(slog.NewTextHandler(os.Stdout, &slog.HandlerOptions{
-		Level: slog.LevelDebug,
-	}))
+	logger := slogger.NewLogger(
+		slogger.WithOrganization(ac.Name),
+	)
 	if ac.IsProduction() {
-		logger = slog.New(slog.NewJSONHandler(os.Stdout, &slog.HandlerOptions{
-			Level: slog.LevelInfo,
-		}))
+		logger = slogger.NewLogger(
+			slogger.WithOrganization(ac.Name),
+			slogger.WithLevel("info"),
+			slogger.WithOutput("stdout"),
+			slogger.WithFormat("json"),
+		)
 	}
 	slog.SetDefault(logger)
 
@@ -78,6 +86,11 @@ func NewApp(
 
 	// 404 handler
 	app.Use(nfm.NewNotFound())
+
+	go services.ServicesCheck(context.Background())
+
+	// HINT: alt version
+	// go services.Check()
 
 	return &Server{
 		App:       app,
